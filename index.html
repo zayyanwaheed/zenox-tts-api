@@ -17,10 +17,15 @@
         textarea:focus { border-color: #6366f1; }
         textarea::placeholder { color: #444; }
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .controls-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px; }
         .control-group label { display: block; font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
         select, input[type="text"], input[type="password"] { width: 100%; background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 12px 15px; color: #fff; font-size: 0.9rem; outline: none; font-family: inherit; transition: border-color 0.3s; }
         select:focus, input:focus { border-color: #6366f1; }
         select option { background: #1a1a1a; }
+        .emotion-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .emotion-btn { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; color: #aaa; }
+        .emotion-btn:hover { border-color: #6366f1; color: #fff; }
+        .emotion-btn.active { background: #1e1b4b; border-color: #6366f1; color: #6366f1; font-weight: 600; }
         .voice-upload { margin-top: 20px; }
         .upload-area { border: 2px dashed #333; border-radius: 12px; padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; }
         .upload-area:hover { border-color: #6366f1; background: #1a1a1a; }
@@ -56,6 +61,7 @@
         <div class="card">
             <div class="section-title">Text Input</div>
             <textarea id="text" placeholder="Type your text here... 大家好 or Hello world"></textarea>
+
             <div class="controls">
                 <div class="control-group">
                     <label>Language</label>
@@ -71,11 +77,25 @@
                         <option value="mp3">🎵 MP3 (Compressed)</option>
                     </select>
                 </div>
-                <div class="control-group">
-                    <label>API Key</label>
-                    <input type="password" id="apiKey" placeholder="znx-..." value="znx-dccdcb1c7c1b05efbef3e2b9ffd4f9b1">
+            </div>
+
+            <div class="control-group" style="margin-top: 15px;">
+                <label>API Key</label>
+                <input type="password" id="apiKey" placeholder="znx-..." value="znx-dccdcb1c7c1b05efbef3e2b9ffd4f9b1">
+            </div>
+
+            <div style="margin-top: 20px;">
+                <div class="section-title">Emotion</div>
+                <div class="emotion-grid">
+                    <div class="emotion-btn active" onclick="setEmotion('neutral')">😐 Neutral</div>
+                    <div class="emotion-btn" onclick="setEmotion('happy')">😊 Happy</div>
+                    <div class="emotion-btn" onclick="setEmotion('sad')">😢 Sad</div>
+                    <div class="emotion-btn" onclick="setEmotion('angry')">😠 Angry</div>
+                    <div class="emotion-btn" onclick="setEmotion('calm')">😌 Calm</div>
+                    <div class="emotion-btn" onclick="setEmotion('excited')">🤩 Excited</div>
                 </div>
             </div>
+
             <div class="voice-upload">
                 <div class="section-title" style="margin-top: 20px;">Voice Clone (Optional)</div>
                 <div class="upload-area" id="uploadArea">
@@ -84,6 +104,7 @@
                     <p id="uploadText">Drop a voice file here or click to browse</p>
                 </div>
             </div>
+
             <button class="generate-btn" id="generateBtn" onclick="generate()">✨ Generate Speech</button>
             <div class="status" id="status"></div>
             <div class="audio-player" id="audioPlayer">
@@ -99,6 +120,8 @@
     </div>
     <script>
         const API_URL = 'https://unpreceded-odessa-implacental.ngrok-free.dev';
+        let selectedEmotion = 'neutral';
+
         const voiceFile = document.getElementById('voiceFile');
         const uploadArea = document.getElementById('uploadArea');
         const uploadText = document.getElementById('uploadText');
@@ -109,6 +132,12 @@
                 uploadArea.classList.add('active');
             }
         });
+
+        function setEmotion(emotion) {
+            selectedEmotion = emotion;
+            document.querySelectorAll('.emotion-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
 
         async function generate() {
             const text = document.getElementById('text').value.trim();
@@ -131,6 +160,7 @@
             formData.append('text', text);
             formData.append('language', language);
             formData.append('output_format', outputFormat);
+            formData.append('emotion', selectedEmotion);
             if (voiceFile.files[0]) formData.append('speaker_wav', voiceFile.files[0]);
 
             try {
@@ -141,6 +171,7 @@
                 });
 
                 if (response.status === 401) { showStatus('Invalid API key!', 'error'); return; }
+                if (response.status === 429) { showStatus('Too many requests! Wait a minute.', 'error'); return; }
                 if (!response.ok) { showStatus('Error: ' + response.statusText, 'error'); return; }
 
                 const blob = await response.blob();
