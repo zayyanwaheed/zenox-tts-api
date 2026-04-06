@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenox TTS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { width: 100%; max-width: 700px; padding: 40px 20px; }
+        .header { text-align: center; margin-bottom: 50px; }
+        .header h1 { font-size: 3rem; font-weight: 800; background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+        .header p { color: #666; font-size: 1rem; }
+        .card { background: #111; border: 1px solid #222; border-radius: 20px; padding: 35px; margin-bottom: 20px; }
+        .section-title { font-size: 0.75rem; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }
+        textarea { width: 100%; background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 15px; color: #fff; font-size: 1rem; resize: none; height: 140px; outline: none; font-family: inherit; transition: border-color 0.3s; }
+        textarea:focus { border-color: #6366f1; }
+        textarea::placeholder { color: #444; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .control-group label { display: block; font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        select, input[type="text"], input[type="password"] { width: 100%; background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 12px 15px; color: #fff; font-size: 0.9rem; outline: none; font-family: inherit; transition: border-color 0.3s; }
+        select:focus, input:focus { border-color: #6366f1; }
+        select option { background: #1a1a1a; }
+        .voice-upload { margin-top: 20px; }
+        .upload-area { border: 2px dashed #333; border-radius: 12px; padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s; position: relative; }
+        .upload-area:hover { border-color: #6366f1; background: #1a1a1a; }
+        .upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+        .upload-area p { color: #666; font-size: 0.9rem; }
+        .upload-area.active { border-color: #6366f1; background: #1a1a1a; }
+        .upload-area.active p { color: #6366f1; }
+        .generate-btn { width: 100%; margin-top: 25px; padding: 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; border-radius: 12px; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; font-family: inherit; }
+        .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3); }
+        .generate-btn:active { transform: translateY(0); }
+        .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .audio-player { display: none; margin-top: 20px; background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; }
+        .audio-player.visible { display: block; }
+        .audio-player p { color: #666; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        audio { width: 100%; accent-color: #6366f1; }
+        .status { text-align: center; padding: 12px; border-radius: 10px; font-size: 0.9rem; margin-top: 15px; display: none; }
+        .status.loading { display: block; background: #1a1a2e; color: #6366f1; border: 1px solid #6366f1; }
+        .status.error { display: block; background: #2a1a1a; color: #ef4444; border: 1px solid #ef4444; }
+        .status.success { display: block; background: #1a2a1a; color: #22c55e; border: 1px solid #22c55e; }
+        .footer { text-align: center; margin-top: 30px; color: #333; font-size: 0.85rem; }
+        .footer a { color: #6366f1; text-decoration: none; }
+        .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #22c55e; margin-right: 6px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Zenox TTS</h1>
+            <p><span class="dot"></span>Multilingual Voice Synthesis</p>
+        </div>
+        <div class="card">
+            <div class="section-title">Text Input</div>
+            <textarea id="text" placeholder="Type your text here... 大家好 or Hello world"></textarea>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Language</label>
+                    <select id="language">
+                        <option value="zh-cn">🇨🇳 Chinese</option>
+                        <option value="en">🇬🇧 English</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Output Format</label>
+                    <select id="outputFormat">
+                        <option value="wav">🔊 WAV (High Quality)</option>
+                        <option value="mp3">🎵 MP3 (Compressed)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>API Key</label>
+                    <input type="password" id="apiKey" placeholder="znx-..." value="znx-dccdcb1c7c1b05efbef3e2b9ffd4f9b1">
+                </div>
+            </div>
+            <div class="voice-upload">
+                <div class="section-title" style="margin-top: 20px;">Voice Clone (Optional)</div>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="voiceFile" accept=".wav,.mp3">
+                    <div class="upload-icon">🎙️</div>
+                    <p id="uploadText">Drop a voice file here or click to browse</p>
+                </div>
+            </div>
+            <button class="generate-btn" id="generateBtn" onclick="generate()">✨ Generate Speech</button>
+            <div class="status" id="status"></div>
+            <div class="audio-player" id="audioPlayer">
+                <p>Output Audio</p>
+                <audio id="audioElement" controls></audio>
+            </div>
+        </div>
+        <div class="footer">
+            Built by <a href="https://github.com/zayyanwaheed" target="_blank">ZENOX</a> · 
+            <a href="https://huggingface.co/iamzenox/zenox-tts-multilingual" target="_blank">Model</a> · 
+            <a href="https://github.com/zayyanwaheed/zenox-tts-api" target="_blank">API</a>
+        </div>
+    </div>
+    <script>
+        const API_URL = 'https://unpreceded-odessa-implacental.ngrok-free.dev';
+        const voiceFile = document.getElementById('voiceFile');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadText = document.getElementById('uploadText');
+
+        voiceFile.addEventListener('change', function() {
+            if (this.files[0]) {
+                uploadText.textContent = '✅ ' + this.files[0].name;
+                uploadArea.classList.add('active');
+            }
+        });
+
+        async function generate() {
+            const text = document.getElementById('text').value.trim();
+            const language = document.getElementById('language').value;
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const outputFormat = document.getElementById('outputFormat').value;
+            const btn = document.getElementById('generateBtn');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioElement = document.getElementById('audioElement');
+
+            if (!text) { showStatus('Please enter some text!', 'error'); return; }
+            if (!apiKey) { showStatus('Please enter your API key!', 'error'); return; }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
+            showStatus('Generating speech, please wait...', 'loading');
+            audioPlayer.classList.remove('visible');
+
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('language', language);
+            formData.append('output_format', outputFormat);
+            if (voiceFile.files[0]) formData.append('speaker_wav', voiceFile.files[0]);
+
+            try {
+                const response = await fetch(API_URL + '/synthesize', {
+                    method: 'POST',
+                    headers: { 'x-api-key': apiKey },
+                    body: formData
+                });
+
+                if (response.status === 401) { showStatus('Invalid API key!', 'error'); return; }
+                if (!response.ok) { showStatus('Error: ' + response.statusText, 'error'); return; }
+
+                const blob = await response.blob();
+                audioElement.src = URL.createObjectURL(blob);
+                audioPlayer.classList.add('visible');
+                showStatus('Speech generated successfully!', 'success');
+                audioElement.play();
+
+            } catch (err) {
+                showStatus('Cannot connect to API. Make sure tts_api.py is running!', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✨ Generate Speech';
+            }
+        }
+
+        function showStatus(msg, type) {
+            const s = document.getElementById('status');
+            s.textContent = msg;
+            s.className = 'status ' + type;
+        }
+    </script>
+</body>
+</html>
