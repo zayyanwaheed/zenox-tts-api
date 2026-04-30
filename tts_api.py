@@ -42,6 +42,16 @@ def is_rate_limited(ip):
     rate_tracker[ip].append(now)
     return False
 
+# Emotion presets
+EMOTION_PRESETS = {
+    "neutral":   {"temperature": 0.65, "speed": 1.0,  "repetition_penalty": 2.0},
+    "happy":     {"temperature": 0.85, "speed": 1.15, "repetition_penalty": 2.5},
+    "sad":       {"temperature": 0.55, "speed": 0.85, "repetition_penalty": 1.8},
+    "angry":     {"temperature": 0.90, "speed": 1.2,  "repetition_penalty": 3.0},
+    "calm":      {"temperature": 0.50, "speed": 0.90, "repetition_penalty": 1.5},
+    "excited":   {"temperature": 0.95, "speed": 1.3,  "repetition_penalty": 2.8},
+}
+
 config = XttsConfig()
 config.load_json("D:/voice_dataset/trained/run/training/GPT_XTTS_FT-April-05-2026_10+18PM-0000000/config.json")
 model = Xtts.init_from_config(config)
@@ -64,6 +74,10 @@ def convert_to_wav(input_path):
         return wav_path
     return input_path
 
+@app.get("/emotions")
+def get_emotions():
+    return {"emotions": list(EMOTION_PRESETS.keys())}
+
 @app.post("/synthesize")
 async def synthesize(
     request: Request,
@@ -71,6 +85,7 @@ async def synthesize(
     language: str = Form(default="zh-cn"),
     speaker_wav: UploadFile = File(default=None),
     output_format: str = Form(default="wav"),
+    emotion: str = Form(default="neutral"),
     x_api_key: str = Header(...)
 ):
     ip = request.client.host
@@ -83,7 +98,9 @@ async def synthesize(
         logging.warning(f"RATE LIMITED | IP: {ip}")
         raise HTTPException(status_code=429, detail="Too many requests. Max 10 per minute.")
 
-    logging.info(f"REQUEST | IP: {ip} | lang: {language} | format: {output_format} | text: {text[:50]}")
+    # Get emotion settings
+    preset = EMOTION_PRESETS.get(emotion, EMOTION_PRESETS["neutral"])
+    logging.info(f"REQUEST | IP: {ip} | lang: {language} | format: {output_format} | emotion: {emotion} | text: {text[:50]}")
 
     if speaker_wav:
         ext = os.path.splitext(speaker_wav.filename)[1] or ".wav"
@@ -99,12 +116,15 @@ async def synthesize(
         config=config,
         speaker_wav=speaker_path,
         language=language,
+        temperature=preset["temperature"],
+        speed=preset["speed"],
+        repetition_penalty=preset["repetition_penalty"],
     )
 
     out_wav = tempfile.mktemp(suffix=".wav")
     wav.write(out_wav, 24000, np.array(outputs["wav"]))
 
-    logging.info(f"SUCCESS | IP: {ip} | lang: {language}")
+    logging.info(f"SUCCESS | IP: {ip} | lang: {language} | emotion: {emotion}")
 
     if output_format == "mp3":
         out_mp3 = out_wav.replace(".wav", ".mp3")
